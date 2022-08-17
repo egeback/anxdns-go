@@ -5,7 +5,7 @@ type Data struct {
 	Type    string `json:"type"`
 	Name    string `json:"name"`
 	TTL     int    `json:"ttl"`
-	Address string `json:"ttl,omitempty"`
-	TxtData string `json:"ttl,omitempty"`
-	Line    int    `json:"ttl,omitempty"`
+	Address string `json:"address,omitempty"`
+	TxtData string `json:"txtData,omitempty"`
+	Line    int    `json:"line,omitempty"`
 }

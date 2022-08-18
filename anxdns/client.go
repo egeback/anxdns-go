@@ -29,7 +29,6 @@ func New(Domain string, ApiKey string) *Client {
 }
 
 func (client *Client) _communicate(apiRequest Request) []byte {
-	fmt.Print("Here")
 	// Create client
 	httpClient := &http.Client{}
 
@@ -47,7 +46,7 @@ func (client *Client) _communicate(apiRequest Request) []byte {
 	}
 
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("apikey", client.ApiKey)
+	request.Header.Add("apiKey", client.ApiKey)
 
 	response, error := httpClient.Do(request)
 	if error != nil {
@@ -65,8 +64,12 @@ func (client *Client) _communicate(apiRequest Request) []byte {
 	respBody, _ := ioutil.ReadAll(response.Body)
 
 	// Display results
-	/// fmt.Println("response Status : ", response.Status)
-	// fmt.Println("response Body : ", string(respBody))
+	//fmt.Println("response Status : ", response.Status)
+	//fmt.Println("response Body : ", string(respBody))
+
+	if response.StatusCode != 200 {
+		panic(errors.New("Could not communicate with server"))
+	}
 
 	return respBody
 }
@@ -158,7 +161,8 @@ func (client Client) DeleteRecordsByTxt(name string) {
 
 func (client *Client) GetAllRecords() []Record {
 	request := Request{
-		Type: GET,
+		Type:        GET,
+		QueryParams: "?domain=" + client.Domain,
 	}
 	respBody := client._communicate(request)
 	response := Response{}
@@ -183,6 +187,7 @@ func (client Client) getRecordsByLine(line int) Record {
 func (client Client) GetRecordsByTxt(txt string, name string) []Record {
 	var records []Record
 	if name != "" {
+		fmt.Println("name: " + name)
 		records = client.GetRecordsByName(name)
 	} else {
 		records = client.GetAllRecords()
@@ -194,7 +199,10 @@ func (client Client) GetRecordsByTxt(txt string, name string) []Record {
 func ParseRecordsByTxt(all_records []Record, txt string) []Record {
 	var records []Record
 
+	fmt.Println("Len: " + fmt.Sprint(len(all_records)))
+
 	for _, record := range all_records {
+		fmt.Println(record.Type + " " + record.Txtdata)
 		if record.Type == "TXT" && record.Txtdata == txt {
 			records = append(records, record)
 		}

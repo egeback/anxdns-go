@@ -7,5 +7,5 @@ type Data struct {
 	TTL     int    `json:"ttl"`
 	Address string `json:"address,omitempty"`
 	TxtData string `json:"txtData,omitempty"`
-	Line    int    `json:"line,omitempty"`
+	Line    string `json:"line,omitempty"`
 }

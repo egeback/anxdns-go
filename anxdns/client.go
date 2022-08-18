@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -56,7 +57,8 @@ func (client *Client) _communicate(apiRequest Request) []byte {
 	defer func() {
 		err := response.Body.Close()
 		if err != nil {
-			//klog.Fatal(err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
 	}()
 
@@ -155,8 +157,75 @@ func (client Client) VerifyOrGetRecord(line int, name string, recordType string)
 
 }
 
-func (client Client) DeleteRecordsByTxt(name string) {
+func (client Client) DeleteRecordsByLine(line int) {
+	// Find line
+	record := client.VerifyOrGetRecord(line, "", "")
 
+	data := Data{
+		Domain: client.Domain,
+		Type:   "CNAME",
+		Name:   record.Name,
+		Line:   record.Line,
+	}
+
+	jsonData, _ := json.Marshal(data)
+
+	apiRequest := Request{
+		Type:     DELETE,
+		JsonData: jsonData,
+	}
+
+	client._communicate(apiRequest)
+}
+
+func (client Client) DeleteRecordsByName(name string) {
+	// Find name
+	record := client.VerifyOrGetRecord(-1, name, "")
+
+	data := Data{
+		Domain: client.Domain,
+		Type:   "CNAME",
+		Name:   record.Name,
+		Line:   record.Line,
+	}
+
+	jsonData, _ := json.Marshal(data)
+
+	apiRequest := Request{
+		Type:     DELETE,
+		JsonData: jsonData,
+	}
+
+	client._communicate(apiRequest)
+}
+
+func (client Client) DeleteRecordsByTxt(txt string, name string) {
+	// Find name
+	records := client.GetRecordsByTxt(txt, name)
+
+	if len(records) == 0 {
+		fmt.Println("0 records with that name.")
+	} else if len(records) > 1 {
+		fmt.Println(">1 record with that name. Specify line instead of name.")
+	}
+
+	record := records[0]
+
+	data := Data{
+		Domain: client.Domain,
+		Type:   "CNAME",
+		Name:   record.Name,
+		Line:   record.Line,
+	}
+
+	jsonData, _ := json.Marshal(data)
+
+	apiRequest := Request{
+		Type:     DELETE,
+		JsonData: jsonData,
+	}
+
+	client._communicate(apiRequest)
 }
 
 func (client *Client) GetAllRecords() []Record {
@@ -187,7 +256,6 @@ func (client Client) getRecordsByLine(line int) Record {
 func (client Client) GetRecordsByTxt(txt string, name string) []Record {
 	var records []Record
 	if name != "" {
-		fmt.Println("name: " + name)
 		records = client.GetRecordsByName(name)
 	} else {
 		records = client.GetAllRecords()
@@ -198,8 +266,6 @@ func (client Client) GetRecordsByTxt(txt string, name string) []Record {
 
 func ParseRecordsByTxt(all_records []Record, txt string) []Record {
 	var records []Record
-
-	fmt.Println("Len: " + fmt.Sprint(len(all_records)))
 
 	for _, record := range all_records {
 		fmt.Println(record.Type + " " + record.Txtdata)

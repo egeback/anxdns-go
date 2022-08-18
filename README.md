@@ -1,6 +1,15 @@
-# anxdns-go
+# ANX API Client - GO
 
-``
+This is an unofficial pythonic implementation of
+[ANX's API](https://dyn.anx.se), described here [API documentation](http://dyn.anx.se/users/apidok.jsf)
+
+Documentation
+-------------
+This is alpha state software, and I haven't bothered with documentation yet.
+
+Command line client
+-------------------
+```
 Usage: anxdns-go <command>
 
 Flags:
@@ -21,11 +30,10 @@ Commands:
 
   delete
     Delete Record
-
+````
 Run "anxdns-go <command> --help" for more information on a command.
-``
 
-``
+````
 Usage: anxdns-go get [<name>]
 
 Get Records
@@ -41,4 +49,37 @@ Flags:
 
   -a, --all               Get all records
   -t, --txt=STRING        Text value of record
-  ``
+````
+
+Client requires two parameters APIKEY and DOMAIN. These can be provided as ENV or arguments in the call.
+````
+export ANXDNS_APIKEY=keygoeshere
+export ANXDNS_DOMAIN=domain.se
+````
+or
+````
+./anxdns-go -d domain.se --apikey keygoeshere
+````
+
+#### Examples
+Get all records 
+````
+./bin/anxdnsclient -d domain.se --apikey keygoeshere get -a
+````
+Get records by name
+````
+./bin/anxdnsapi get -n www.domain.se -d domain.se --apikey keygoeshere <name>
+````
+
+Get TXT records by txt
+````
+./bin/anxdnsapi get -t txt -d domain.se --apikey keygoeshere <name>
+````
+
+TODO
+-----
+* Update of names
+* Test cases
+
+Changelog
+---------

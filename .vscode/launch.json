@@ -3,5 +3,24 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": []
+    "configurations": [
+    {
+        "name": "Test add record",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "${file}",
+        "args": ["add", "-t", "TXT", "test.egeback.se." ,"1234567890", "-l", "3600"],
+        "env": {"ANXDNS_DOMAIN": "egeback.se", "ANXDNS_APIKEY": "e1be6c1930b2b4e027ff26c05f0c2c9eac8c8daf81cb957f685c02f9baa5ce70"}
+    },
+    {
+        "name": "Test remove record",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "${file}",
+        "args": ["delete", "-t", "TXT", "test.egeback.se." ,"1234567890", "-l", "3600"],
+        "env": {"ANXDNS_DOMAIN": "egeback.se", "ANXDNS_APIKEY": "e1be6c1930b2b4e027ff26c05f0c2c9eac8c8daf81cb957f685c02f9baa5ce70"}
+    }
+    ]
 }

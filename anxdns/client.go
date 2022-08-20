@@ -3,20 +3,20 @@ package anxdns
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
+
+	"github.com/bobesa/go-domain-util/domainutil"
 )
 
 const (
 	DefaultTTL int = 3600
 )
 
-type Communicate func(apiRequest Request) []byte
+type Communicate func(apiRequest Request) ([]byte, error)
 
 type Client struct {
 	Domain      string
@@ -30,10 +30,11 @@ func NewClient(Domain string, ApiKey string) *Client {
 		Domain:      Domain,
 		ApiKey:      ApiKey,
 		Communicate: _communicate,
+		BaseUrl:     "https://dyn.anx.se/api/dns/",
 	}
 }
 
-func _communicate(apiRequest Request) []byte {
+func _communicate(apiRequest Request) ([]byte, error) {
 	// Create client
 	httpClient := &http.Client{}
 
@@ -47,7 +48,7 @@ func _communicate(apiRequest Request) []byte {
 	}
 
 	if error != nil {
-		fmt.Println(error)
+		return nil, error
 	}
 
 	request.Header.Add("Content-Type", "application/json")
@@ -55,14 +56,13 @@ func _communicate(apiRequest Request) []byte {
 
 	response, error := httpClient.Do(request)
 	if error != nil {
-		fmt.Println(error)
+		return nil, error
 	}
 
 	defer func() {
 		err := response.Body.Close()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			panic(err)
 		}
 	}()
 
@@ -73,18 +73,37 @@ func _communicate(apiRequest Request) []byte {
 	//fmt.Println("response Status : ", response.Status)
 	//fmt.Println("response Body : ", string(respBody))
 
-	if response.StatusCode != 200 {
-		panic(errors.New("Could not communicate with server"))
+	if !(response.StatusCode == 200 || response.StatusCode == 201) {
+		return nil, fmt.Errorf("Could not communicate with server")
 	}
 
-	return respBody
+	return respBody, nil
+}
+
+func checkSubdomainPartOfDomain(domain string, name string) bool {
+	var n string
+
+	if strings.HasSuffix(name, ".") {
+		n = string(name[0 : len(name)-1])
+	} else {
+		n = name
+	}
+
+	if domainutil.Domain(n) != domain {
+		return false
+	}
+	return true
 }
 
 func (client Client) AddTxtRecord(name string, txt string, ttl int) {
+	if !checkSubdomainPartOfDomain(client.Domain, name) {
+		panic("Name not part of domain")
+	}
+
 	record := Data{
 		Domain:  client.Domain,
 		Type:    "TXT",
-		Name:    name,
+		Name:    secureSuffixxDot(name),
 		TTL:     ttl,
 		TxtData: txt,
 	}
@@ -102,10 +121,14 @@ func (client Client) AddTxtRecord(name string, txt string, ttl int) {
 }
 
 func (client Client) AddARecord(name string, address string, ttl int) {
+	if !checkSubdomainPartOfDomain(client.Domain, name) {
+		panic("Name not part of domain")
+	}
+
 	record := Data{
 		Domain:  client.Domain,
 		Type:    "A",
-		Name:    name,
+		Name:    secureSuffixxDot(name),
 		TTL:     ttl,
 		Address: address,
 	}
@@ -123,10 +146,14 @@ func (client Client) AddARecord(name string, address string, ttl int) {
 }
 
 func (client Client) AddCNameRecord(name string, address string, ttl int) {
+	if !checkSubdomainPartOfDomain(client.Domain, name) {
+		panic("Name not part of domain")
+	}
+
 	record := Data{
 		Domain:  client.Domain,
 		Type:    "CNAME",
-		Name:    name,
+		Name:    secureSuffixxDot(name),
 		TTL:     ttl,
 		Address: address,
 	}
@@ -143,33 +170,44 @@ func (client Client) AddCNameRecord(name string, address string, ttl int) {
 	client.Communicate(apiRequest)
 }
 
-func (client Client) VerifyOrGetRecord(line int, name string, recordType string) Record {
-	var record Record
+func (client Client) VerifyOrGetRecord(line int, name string, recordType string) (*Record, error) {
+	var record *Record
+	var error error
 	if line > 0 {
-		record = client.getRecordsByLine(line)
-	} else if len(name) > 0 {
-		records := client.GetRecordsByName(name)
-		if len(records) == 0 {
-			panic(errors.New("0 records with that name"))
-		} else if len(records) > 1 {
-			panic(errors.New(">1 record with that name. Specify line instead of name."))
+		record, error = client.getRecordsByLine(line)
+		if error != nil {
+			return nil, error
 		}
-		record = records[0]
+	} else if len(name) > 0 {
+		records, error := client.GetRecordsByName(secureSuffixxDot(name))
+		if error != nil {
+			return nil, error
+		}
+		if len(records) == 0 {
+			return nil, fmt.Errorf(("0 records with that name"))
+		} else if len(records) > 1 {
+			return nil, fmt.Errorf((">1 record with that name. Specify line instead of name."))
+		}
+		record = &records[0]
 	} else {
-		panic(errors.New("Line or name needs to be provided"))
+		return nil, fmt.Errorf("Line or name needs to be provided")
 	}
 
 	if len(recordType) > 0 && record.Type != recordType {
-		panic(errors.New("Record is not a " + recordType))
+		return nil, fmt.Errorf("Record is not a " + recordType)
 	}
 
-	return record
+	return record, nil
 
 }
 
-func (client Client) DeleteRecordsByLine(line int) {
+func (client Client) DeleteRecordsByLine(line int) error {
 	// Find line
-	record := client.VerifyOrGetRecord(line, "", "")
+	record, error := client.VerifyOrGetRecord(line, "", "")
+
+	if error != nil {
+		return error
+	}
 
 	data := Data{
 		Domain: client.Domain,
@@ -187,12 +225,16 @@ func (client Client) DeleteRecordsByLine(line int) {
 		ApiKey:   client.ApiKey,
 	}
 
-	client.Communicate(apiRequest)
+	_, error = client.Communicate(apiRequest)
+	return error
 }
 
-func (client Client) DeleteRecordsByName(name string) {
-	// Find name
-	record := client.VerifyOrGetRecord(-1, name, "")
+func (client Client) DeleteRecordsByName(name string) error {
+	// TODO: Add to verify also type of record
+	record, error := client.VerifyOrGetRecord(-1, secureSuffixxDot(name), "")
+	if error != nil {
+		return error
+	}
 
 	data := Data{
 		Domain: client.Domain,
@@ -210,17 +252,21 @@ func (client Client) DeleteRecordsByName(name string) {
 		ApiKey:   client.ApiKey,
 	}
 
-	client.Communicate(apiRequest)
+	_, error = client.Communicate(apiRequest)
+	return error
 }
 
-func (client Client) DeleteRecordsByTxt(txt string, name string) {
+func (client Client) DeleteRecordsByTxt(name string, txt string) error {
 	// Find name
-	records := client.GetRecordsByTxt(txt, name)
+	records, error := client.GetRecordsByTxt(txt, secureSuffixxDot(name))
+	if error != nil {
+		return error
+	}
 
 	if len(records) == 0 {
-		fmt.Println("0 records with that name.")
+		return fmt.Errorf("0 records with that name.")
 	} else if len(records) > 1 {
-		fmt.Println(">1 record with that name. Specify line instead of name.")
+		return fmt.Errorf(">1 record with that name. Specify line instead of name.")
 	}
 
 	record := records[0]
@@ -241,53 +287,69 @@ func (client Client) DeleteRecordsByTxt(txt string, name string) {
 		ApiKey:   client.ApiKey,
 	}
 
-	client.Communicate(apiRequest)
+	_, error = client.Communicate(apiRequest)
+	return error
 }
 
-func (client *Client) GetAllRecords() []Record {
+func (client *Client) GetAllRecords() ([]Record, error) {
 	request := Request{
 		Type:        GET,
 		QueryParams: "?domain=" + client.Domain,
 		BaseUrl:     client.BaseUrl,
 		ApiKey:      client.ApiKey,
 	}
-	respBody := client.Communicate(request)
+	respBody, error := client.Communicate(request)
+
+	if error != nil {
+		return nil, error
+	}
+
 	response := Response{}
 	if err := json.Unmarshal(respBody, &response); err != nil {
-		panic(err)
+		return nil, error
 	}
 
-	return response.DnsRecords
+	return response.DnsRecords, nil
 }
 
-func (client Client) GetRecordsByName(name string) []Record {
-	all_records := client.GetAllRecords()
+func (client Client) GetRecordsByName(name string) ([]Record, error) {
+	all_records, error := client.GetAllRecords()
+	if error != nil {
+		return nil, error
+	}
 
-	return ParseRecordsByName(all_records, name)
+	return ParseRecordsByName(all_records, secureSuffixxDot(name)), nil
 }
 
-func (client Client) getRecordsByLine(line int) Record {
-	all_records := client.GetAllRecords()
+func (client Client) getRecordsByLine(line int) (*Record, error) {
+	all_records, error := client.GetAllRecords()
+	if error != nil {
+		return nil, error
+	}
 
-	return ParseRecordsByLine(all_records, line)
+	return ParseRecordsByLine(all_records, line), nil
 }
 
-func (client Client) GetRecordsByTxt(txt string, name string) []Record {
+func (client Client) GetRecordsByTxt(txt string, name string) ([]Record, error) {
 	var records []Record
+	var error error
 	if name != "" {
-		records = client.GetRecordsByName(name)
+		records, error = client.GetRecordsByName(secureSuffixxDot(name))
 	} else {
-		records = client.GetAllRecords()
+		records, error = client.GetAllRecords()
 	}
 
-	return ParseRecordsByTxt(records, txt)
+	if error != nil {
+		return nil, error
+	}
+
+	return ParseRecordsByTxt(records, txt), nil
 }
 
 func ParseRecordsByTxt(all_records []Record, txt string) []Record {
 	var records []Record
 
 	for _, record := range all_records {
-		fmt.Println(record.Type + " " + record.Txtdata)
 		if record.Type == "TXT" && record.Txtdata == txt {
 			records = append(records, record)
 		}
@@ -296,12 +358,14 @@ func ParseRecordsByTxt(all_records []Record, txt string) []Record {
 	return records
 }
 
-func ParseRecordsByName(all_records []Record, name string) []Record {
-	n := name
-	if !strings.HasSuffix(n, ".") {
-		n = name + "."
+func secureSuffixxDot(name string) string {
+	if !strings.HasSuffix(name, ".") {
+		return name + "."
 	}
+	return name
+}
 
+func ParseRecordsByName(all_records []Record, name string) []Record {
 	var records []Record
 
 	for _, record := range all_records {
@@ -313,7 +377,7 @@ func ParseRecordsByName(all_records []Record, name string) []Record {
 	return records
 }
 
-func ParseRecordsByLine(all_records []Record, line int) Record {
+func ParseRecordsByLine(all_records []Record, line int) *Record {
 	var records []Record
 
 	for _, record := range all_records {
@@ -322,8 +386,8 @@ func ParseRecordsByLine(all_records []Record, line int) Record {
 		}
 	}
 	if len(records) > 0 {
-		return records[0]
+		return &records[0]
 	}
 
-	panic(errors.New("No records found"))
+	return nil
 }

@@ -6,6 +6,6 @@ type Data struct {
 	Name    string `json:"name"`
 	TTL     int    `json:"ttl"`
 	Address string `json:"address,omitempty"`
-	TxtData string `json:"txtData,omitempty"`
+	TxtData string `json:"txtdata,omitempty"`
 	Line    string `json:"line,omitempty"`
 }

@@ -95,7 +95,7 @@ func checkSubdomainPartOfDomain(domain string, name string) bool {
 	return true
 }
 
-func (client Client) AddTxtRecord(name string, txt string, ttl int) {
+func (client Client) AddTxtRecord(name string, txt string, ttl int) error {
 	if !checkSubdomainPartOfDomain(client.Domain, name) {
 		panic("Name not part of domain")
 	}
@@ -117,10 +117,11 @@ func (client Client) AddTxtRecord(name string, txt string, ttl int) {
 		ApiKey:   client.ApiKey,
 	}
 
-	client.Communicate(apiRequest)
+	_, error := client.Communicate(apiRequest)
+	return error
 }
 
-func (client Client) AddARecord(name string, address string, ttl int) {
+func (client Client) AddARecord(name string, address string, ttl int) error {
 	if !checkSubdomainPartOfDomain(client.Domain, name) {
 		panic("Name not part of domain")
 	}
@@ -142,10 +143,11 @@ func (client Client) AddARecord(name string, address string, ttl int) {
 		ApiKey:   client.ApiKey,
 	}
 
-	client.Communicate(apiRequest)
+	_, error := client.Communicate(apiRequest)
+	return error
 }
 
-func (client Client) AddCNameRecord(name string, address string, ttl int) {
+func (client Client) AddCNameRecord(name string, address string, ttl int) error {
 	if !checkSubdomainPartOfDomain(client.Domain, name) {
 		panic("Name not part of domain")
 	}
@@ -167,7 +169,8 @@ func (client Client) AddCNameRecord(name string, address string, ttl int) {
 		ApiKey:   client.ApiKey,
 	}
 
-	client.Communicate(apiRequest)
+	_, error := client.Communicate(apiRequest)
+	return error
 }
 
 func (client Client) VerifyOrGetRecord(line int, name string, recordType string) (*Record, error) {

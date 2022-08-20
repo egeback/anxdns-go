@@ -1,11 +1,12 @@
 package test
 
 import (
-	"anxdns-go/anxdns"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/egeback/anxdns-go/anxdns"
 )
 
 func _communicate(apiRequest anxdns.Request) ([]byte, error) {

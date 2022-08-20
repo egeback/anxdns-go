@@ -1,10 +1,11 @@
 package main
 
 import (
-	"anxdns-go/anxdns"
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/egeback/anxdns-go/anxdns"
 
 	"github.com/alecthomas/kong"
 	"github.com/davecgh/go-spew/spew"

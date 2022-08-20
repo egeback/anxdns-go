@@ -1,9 +1,10 @@
 package main
 
 import (
-	"anxdns-go/anxdns"
-	"anxdns-go/test"
 	"testing"
+
+	"github.com/egeback/anxdns-go/anxdns"
+	"github.com/egeback/anxdns-go/test"
 )
 
 var (

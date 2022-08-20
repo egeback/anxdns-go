@@ -1,4 +1,4 @@
-module anxdns-go
+module github.com/egeback/anxdns-go
 
 go 1.17
 

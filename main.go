@@ -46,20 +46,17 @@ func main() {
 		baseURL = "https://dyn.anx.se/api/dns/"
 	}
 
-	var client = anxdns.Client{
-		BaseUrl: baseURL,
-		Domain:  zone,
-		ApiKey:  apiKey,
-	}
+	var client = anxdns.NewClient(zone, apiKey)
+	client.BaseUrl = baseURL
 
 	switch ctx.Command() {
 	case "get":
-		getAllRecords(client)
+		getAllRecords(*client)
 	case "get <name>":
 		if cli.Get.Txt != "" {
-			getTxtRecord(client, cli.Get.Name, cli.Get.Txt)
+			getTxtRecord(*client, cli.Get.Name, cli.Get.Txt)
 		} else {
-			getRecord(client, cli.Get.Name)
+			getRecord(*client, cli.Get.Name)
 		}
 	case "add":
 		fmt.Println("Not implemented yet")

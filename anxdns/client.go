@@ -13,23 +13,27 @@ import (
 )
 
 const (
-	defaultTTL int = 3600
+	DefaultTTL int = 3600
 )
 
+type Communicate func(apiRequest Request) []byte
+
 type Client struct {
-	Domain  string
-	ApiKey  string
-	BaseUrl string `default:"https://dyn.anx.se/api/dns/"`
+	Domain      string
+	ApiKey      string
+	BaseUrl     string `default:"https://dyn.anx.se/api/dns/"`
+	Communicate Communicate
 }
 
-func New(Domain string, ApiKey string) *Client {
+func NewClient(Domain string, ApiKey string) *Client {
 	return &Client{
-		Domain: Domain,
-		ApiKey: ApiKey,
+		Domain:      Domain,
+		ApiKey:      ApiKey,
+		Communicate: _communicate,
 	}
 }
 
-func (client *Client) _communicate(apiRequest Request) []byte {
+func _communicate(apiRequest Request) []byte {
 	// Create client
 	httpClient := &http.Client{}
 
@@ -37,9 +41,9 @@ func (client *Client) _communicate(apiRequest Request) []byte {
 	var error error
 
 	if apiRequest.JsonData == nil {
-		request, error = http.NewRequest(apiRequest.Type, client.BaseUrl+apiRequest.QueryParams, nil)
+		request, error = http.NewRequest(apiRequest.Type, apiRequest.BaseUrl+apiRequest.QueryParams, nil)
 	} else {
-		request, error = http.NewRequest(apiRequest.Type, client.BaseUrl+apiRequest.QueryParams, bytes.NewBuffer(apiRequest.JsonData))
+		request, error = http.NewRequest(apiRequest.Type, apiRequest.BaseUrl+apiRequest.QueryParams, bytes.NewBuffer(apiRequest.JsonData))
 	}
 
 	if error != nil {
@@ -47,7 +51,7 @@ func (client *Client) _communicate(apiRequest Request) []byte {
 	}
 
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("apiKey", client.ApiKey)
+	request.Header.Add("apiKey", apiRequest.ApiKey)
 
 	response, error := httpClient.Do(request)
 	if error != nil {
@@ -90,9 +94,11 @@ func (client Client) AddTxtRecord(name string, txt string, ttl int) {
 	apiRequest := Request{
 		Type:     POST,
 		JsonData: jsonData,
+		BaseUrl:  client.BaseUrl,
+		ApiKey:   client.ApiKey,
 	}
 
-	client._communicate(apiRequest)
+	client.Communicate(apiRequest)
 }
 
 func (client Client) AddARecord(name string, address string, ttl int) {
@@ -109,9 +115,11 @@ func (client Client) AddARecord(name string, address string, ttl int) {
 	apiRequest := Request{
 		Type:     POST,
 		JsonData: jsonData,
+		BaseUrl:  client.BaseUrl,
+		ApiKey:   client.ApiKey,
 	}
 
-	client._communicate(apiRequest)
+	client.Communicate(apiRequest)
 }
 
 func (client Client) AddCNameRecord(name string, address string, ttl int) {
@@ -128,9 +136,11 @@ func (client Client) AddCNameRecord(name string, address string, ttl int) {
 	apiRequest := Request{
 		Type:     POST,
 		JsonData: jsonData,
+		BaseUrl:  client.BaseUrl,
+		ApiKey:   client.ApiKey,
 	}
 
-	client._communicate(apiRequest)
+	client.Communicate(apiRequest)
 }
 
 func (client Client) VerifyOrGetRecord(line int, name string, recordType string) Record {
@@ -173,9 +183,11 @@ func (client Client) DeleteRecordsByLine(line int) {
 	apiRequest := Request{
 		Type:     DELETE,
 		JsonData: jsonData,
+		BaseUrl:  client.BaseUrl,
+		ApiKey:   client.ApiKey,
 	}
 
-	client._communicate(apiRequest)
+	client.Communicate(apiRequest)
 }
 
 func (client Client) DeleteRecordsByName(name string) {
@@ -194,9 +206,11 @@ func (client Client) DeleteRecordsByName(name string) {
 	apiRequest := Request{
 		Type:     DELETE,
 		JsonData: jsonData,
+		BaseUrl:  client.BaseUrl,
+		ApiKey:   client.ApiKey,
 	}
 
-	client._communicate(apiRequest)
+	client.Communicate(apiRequest)
 }
 
 func (client Client) DeleteRecordsByTxt(txt string, name string) {
@@ -223,21 +237,26 @@ func (client Client) DeleteRecordsByTxt(txt string, name string) {
 	apiRequest := Request{
 		Type:     DELETE,
 		JsonData: jsonData,
+		BaseUrl:  client.BaseUrl,
+		ApiKey:   client.ApiKey,
 	}
 
-	client._communicate(apiRequest)
+	client.Communicate(apiRequest)
 }
 
 func (client *Client) GetAllRecords() []Record {
 	request := Request{
 		Type:        GET,
 		QueryParams: "?domain=" + client.Domain,
+		BaseUrl:     client.BaseUrl,
+		ApiKey:      client.ApiKey,
 	}
-	respBody := client._communicate(request)
+	respBody := client.Communicate(request)
 	response := Response{}
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		panic(err)
 	}
+
 	return response.DnsRecords
 }
 

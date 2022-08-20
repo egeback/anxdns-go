@@ -11,4 +11,6 @@ type Request struct {
 	QueryParams string ``
 	Type        string
 	JsonData    []byte
+	BaseUrl     string
+	ApiKey      string
 }

@@ -74,7 +74,7 @@ func _communicate(apiRequest Request) ([]byte, error) {
 	//fmt.Println("response Body : ", string(respBody))
 
 	if !(response.StatusCode == 200 || response.StatusCode == 201) {
-		return nil, fmt.Errorf("Could not communicate with server")
+		return nil, fmt.Errorf("could not communicate with server")
 	}
 
 	return respBody, nil
@@ -97,7 +97,7 @@ func checkSubdomainPartOfDomain(domain string, name string) bool {
 
 func (client Client) AddTxtRecord(name string, txt string, ttl int) error {
 	if !checkSubdomainPartOfDomain(client.Domain, name) {
-		panic("Name not part of domain")
+		return fmt.Errorf("Name not part of domain")
 	}
 
 	record := Data{
@@ -123,7 +123,7 @@ func (client Client) AddTxtRecord(name string, txt string, ttl int) error {
 
 func (client Client) AddARecord(name string, address string, ttl int) error {
 	if !checkSubdomainPartOfDomain(client.Domain, name) {
-		panic("Name not part of domain")
+		return fmt.Errorf("Name not part of domain")
 	}
 
 	record := Data{
@@ -149,7 +149,7 @@ func (client Client) AddARecord(name string, address string, ttl int) error {
 
 func (client Client) AddCNameRecord(name string, address string, ttl int) error {
 	if !checkSubdomainPartOfDomain(client.Domain, name) {
-		panic("Name not part of domain")
+		return fmt.Errorf("Name not part of domain")
 	}
 
 	record := Data{
@@ -187,17 +187,17 @@ func (client Client) VerifyOrGetRecord(line int, name string, recordType string)
 			return nil, error
 		}
 		if len(records) == 0 {
-			return nil, fmt.Errorf(("0 records with that name"))
+			return nil, fmt.Errorf("0 records with that name")
 		} else if len(records) > 1 {
-			return nil, fmt.Errorf((">1 record with that name. Specify line instead of name."))
+			return nil, fmt.Errorf(">1 record with that name. Specify line instead of name")
 		}
 		record = &records[0]
 	} else {
-		return nil, fmt.Errorf("Line or name needs to be provided")
+		return nil, fmt.Errorf("line or name needs to be provided")
 	}
 
 	if len(recordType) > 0 && record.Type != recordType {
-		return nil, fmt.Errorf("Record is not a " + recordType)
+		return nil, fmt.Errorf("record is not a " + recordType)
 	}
 
 	return record, nil

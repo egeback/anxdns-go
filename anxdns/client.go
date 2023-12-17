@@ -54,6 +54,8 @@ func _communicate(apiRequest Request) ([]byte, error) {
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("apiKey", apiRequest.ApiKey)
 
+	// fmt.Println(request)
+
 	response, error := httpClient.Do(request)
 	if error != nil {
 		return nil, error
@@ -70,11 +72,19 @@ func _communicate(apiRequest Request) ([]byte, error) {
 	respBody, _ := ioutil.ReadAll(response.Body)
 
 	// Display results
-	//fmt.Println("response Status : ", response.Status)
-	//fmt.Println("response Body : ", string(respBody))
+	// fmt.Println("response Status : ", response.Status)
+	// fmt.Println("response Body : ", string(respBody))
 
 	if !(response.StatusCode == 200 || response.StatusCode == 201) {
-		return nil, fmt.Errorf("could not communicate with server")
+		if response.StatusCode == 500 {
+			fmt.Println("response Status : ", response.Status)
+			fmt.Println("response Body : ", string(respBody))
+			return nil, fmt.Errorf("500 Internal Server Error")	
+		}
+		if response.StatusCode == 401 {
+			return nil, fmt.Errorf("Unauthorized")	
+		}
+		return nil, fmt.Errorf("Could not communicate with server")
 	}
 
 	return respBody, nil

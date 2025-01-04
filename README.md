@@ -1,3 +1,6 @@
+# Deprecated
+This code is deprecated and repo archived due to closure of ANX services.
+
 # ANX API Client - GO
 
 This is an unofficial pythonic implementation of
